@@ -1,86 +1,95 @@
 import tkinter as tk
-from tkinter import filedialog
-from PIL import Image, ImageTk
 import numpy as np
+from PIL import Image
 
-# Обучающие данные
-training_data = {
-    'A': [1, 1, 1, 0, 1, 1, 1],
-    'B': [1, 1, 1, 1, 1, 1, 0],
-    'C': [1, 0, 0, 0, 1, 0, 0],
-    'D': [1, 1, 0, 0, 0, 1, 0]
-}
 
-# Ожидаемый результат для каждой буквы (1 - для буквы, 0 - для остальных)
-labels = {
-    'A': 1,
-    'B': 0,
-    'C': 0,
-    'D': 0
-}
+class Neuron:
+    def __init__(self, images, inputs, outputs):
+        self.weights = np.random.rand(len(images[0]))
+        self.inputs = inputs,
+        self.outputs = outputs
 
-# Инициализация весов и смещения
-weights = np.random.rand(7, 1)
-bias = np.random.rand(1)
+    def activation(self, x):
+        return 1 if x >= 0 else 0
 
-# Функция активации (сигмоидная функция)
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+# Функция для загрузки изображений букв
+def load_images(letters):
+    images = []
+    for letter in letters:
+        image = np.array(Image.open(f"{letter}.png"))
+        images.append(image)
+    return images
 
-# Обучение перцептрона
-def train_perceptron(bias, weights):
-    for letter, data in training_data.items():
-        X = np.array(data).reshape(1, -1)
-        y = np.array([[labels[letter]]])
+def image_to_vector(image):
+    vector = []
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+            vector.append(image[i][j])
+    return vector
 
-        z = np.dot(X, weights) + bias
-        output = sigmoid(z)
+def calculate_error(predictions, labels):
+    error = 0
+    for i in range(len(predictions)):
+        error += (predictions[i] - labels[i]) ** 2
+    return error
 
-        error = y - output
+def train_perceptron(images, neurons, labels):
+    neurons.weights = np.random.rand(len(images[0]))
+    predictions = []
+    for image in images:
+        prediction = neurons.activation(np.dot(image, weights))
+        predictions.append(prediction)
+    error = calculate_error(predictions, labels)
+    for i in range(len(neurons.weights)):
+        for j in range(len(images[0])):
+            neurons.weights[i] += 0.1 * error * predictions[i] * (1 - predictions[i])
 
-        d_weights = np.dot(X.T, error)
-        d_bias = np.sum(error)
 
-        weights += learning_rate * d_weights
-        bias += learning_rate * d_bias
+# Функция для распознавания буквы
+def recognize_letter(image, weights):
+    prediction = np.dot(image, weights)
+    return np.argmax(prediction)
 
-# Функция предсказания
-def predict(input_data):
-    z = np.dot(input_data, weights) + bias
-    output = sigmoid(z)
-    return output
 
-# Обучение перцептрона
-learning_rate = 0.1
-train_perceptron(bias=bias, weights=weights)
+# Функция для отображения изображения
+def show_image(image):
+    canvas.create_image(0, 0, image=image)
 
-# Создание GUI
-def open_image():
-    file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.jpeg *.png *.gif *.bmp *.tiff")])
-    if file_path:
-        load_and_display_image(file_path)
 
-def load_and_display_image(file_path):
-    image = Image.open(file_path)
-    image = image.convert('L')
-    image = image.resize((7, 1))  # Изменение размерности до 1x7 пикселей
-    data = np.array(image).reshape(1, -1)
-    data = data / 255.0
+# Функция для обработки события нажатия кнопки
+def click_button():
+    image = load_images(letters)[0]
+    letter = recognize_letter(image, neurons[0].weights)
+    tk.messagebox.showinfo('Результат', 'Буква {letters[letter]}')
 
-    prediction = predict(data)
 
-    if prediction > 0.5:
-        result_label.config(text="Буква: A")
-    else:
-        result_label.config(text="Буква не распознана")
+# Загрузка изображений букв
+letters = ["rl", "ol", "ml", "al", "nl"]
+images = load_images(letters)
 
-root = tk.Tk()
-root.title("Загрузка и распознавание букв")
+neurons = [Neuron(images=images) for i in range(33)]
 
-open_button = tk.Button(root, text="Открыть изображение", command=open_image)
-open_button.pack()
+train_perceptron(images=images, neurons=neurons)
 
-result_label = tk.Label(root, text="")
-result_label.pack()
+# Создание окна приложения
+window = tk.Tk()
+window.title("Распознавание")
 
-root.mainloop()
+# Создание виджетов
+canvas = tk.Canvas(width=280, height=280)
+label = tk.Label()
+button = tk.Button(text="Загрузить изображение", command=click_button)
+button2 = tk.Button(text="Распознать", command=click_button)
+
+# Расположение виджетов
+canvas.pack()
+label.pack()
+button.pack()
+button2.pack()
+
+# Загрузка изображения в виджет
+image = images[0]
+show_image(image)
+
+# Запуск цикла событий
+window.mainloop()
